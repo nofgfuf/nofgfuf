@@ -1,0 +1,4 @@
+# Tool versions for this project (https://github.com/rojo-rbx/rokit). Run `rokit install`.
+[tools]
+rojo = "rojo-rbx/rojo@7.7.1"
+selene = "Kampfkarren/selene@0.31.0"
