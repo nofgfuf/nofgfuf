@@ -12,6 +12,7 @@ local ORDER = {
 	"AnimationService",
 	"HatService",
 	"CharacterService",
+	"SelfTestService",
 }
 
 local loaded = {}

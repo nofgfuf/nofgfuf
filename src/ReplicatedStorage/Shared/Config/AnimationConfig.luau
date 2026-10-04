@@ -3,9 +3,9 @@
 	Points the game at YOUR animation folder. When you add or update animations, just replace
 	the Animation objects inside that folder (keep the names) - no script changes needed.
 
-	How it works: on every spawn the server finds your folder, looks up each slot's names below
-	and writes the AnimationId into the character's default "Animate" script.
-	Animations must be owned by you / the group that owns the game, or Roblox won't load them.
+	Keep the folder in ReplicatedStorage: the movement moves (slide, roll...) are played by the
+	client, which can't see ServerStorage.
+	Animations must be R6 (the mailman is R6) and owned by you / the group that owns the game.
 ]]
 
 local AnimationConfig = {}
@@ -14,10 +14,11 @@ local AnimationConfig = {}
 AnimationConfig.FolderNames = { "Animations", "Anims", "Animation" }
 
 -- ... searched (recursively) inside these services, in this order.
-AnimationConfig.SearchIn = { "ReplicatedStorage", "ServerStorage", "StarterPlayer", "Workspace" }
+AnimationConfig.SearchIn = { "ReplicatedStorage", "Workspace", "ServerStorage" }
 
--- Animate-script slot -> Animation names to look for in your folder (case-insensitive,
--- searched recursively, first match wins). Missing ones keep Roblox's default animation.
+-- ------------------------------------------------------------------ default character anims
+-- Slots of Roblox's "Animate" script -> Animation names to look for in your folder
+-- (case-insensitive, subfolders are fine, first match wins). Missing = Roblox default.
 AnimationConfig.Slots = {
 	run = { "Run", "Running", "RunAnim", "RunAnimation", "Sprint" },
 	walk = { "Walk", "Walking", "WalkAnim", "WalkAnimation" },
@@ -31,9 +32,37 @@ AnimationConfig.Slots = {
 	toolnone = { "ToolNone", "Hold", "ToolHold" },
 }
 
--- R15's Animate blends "walk" at low speed and "run" at high speed. true = use the run
--- animation for walking too (so the mailman always runs), unless you have a "walk" anim.
+-- R6 plays the "walk" slot whenever the character moves. true = use your Run animation there
+-- (the mailman always runs). Set false to use a separate Walk animation instead.
 AnimationConfig.UseRunForWalk = true
+
+-- ------------------------------------------------------------------ movement anims (placeholders)
+-- Animations for the parkour moves. Add Animations with any of these names to your folder.
+-- Until you do, the moves still work, they just don't play an animation.
+AnimationConfig.Moves = {
+	Slide = { "Slide", "SlideAnim", "Sliding" },
+	AirSlide = { "AirSlide", "Dive", "DiveAnim" },
+	DoubleJump = { "DoubleJump", "AirJump", "Flip" },
+	LedgeHang = { "LedgeHang", "Hang", "LedgeGrab", "LedgeIdle" },
+	ClimbUp = { "ClimbUp", "LedgeClimb", "Mantle" },
+	Roll = { "Roll", "LandingRoll", "RollAnim" },
+}
+
+-- Placeholder slots: paste an id here (e.g. "rbxassetid://123") to use it without the folder.
+-- An id here wins over the folder.
+AnimationConfig.MoveIds = {
+	Slide = "",
+	AirSlide = "",
+	DoubleJump = "",
+	LedgeHang = "",
+	ClimbUp = "",
+	Roll = "",
+}
+
+-- If a move has no animation, use this other move's animation instead.
+AnimationConfig.MoveFallbacks = {
+	AirSlide = "Slide",
+}
 
 -- Print which animations were found / missing in the Output window.
 AnimationConfig.Verbose = true

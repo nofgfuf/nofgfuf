@@ -21,7 +21,17 @@
     },
     "StarterPlayer": {
       "$className": "StarterPlayer",
-      "$ignoreUnknownInstances": true
+      "$ignoreUnknownInstances": true,
+      "StarterCharacter": {
+        "$path": "src/StarterPlayer/StarterCharacter.rbxmx"
+      },
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "Client": {
+          "$path": "src/StarterPlayer/StarterPlayerScripts/Client"
+        }
+      }
     },
     "Players": {
       "$className": "Players",

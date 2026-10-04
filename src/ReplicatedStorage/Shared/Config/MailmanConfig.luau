@@ -1,19 +1,13 @@
 --[[
 	MailmanConfig
-	How the mailman StarterCharacter is built. Change values here, press Play, done.
+	How the mailman looks. Change values here, press Play, done.
 
-	The character is generated at server start from a HumanoidDescription (blocky R15 by
-	default = the classic 2019 look) and then dressed with models from ReplicatedStorage.Assets.
+	The character itself is the R6 model at StarterPlayer.StarterCharacter (you can see and edit
+	it in Studio). At server start its colours/clothing are set from this config, and the
+	uniform + hat below are put on every time a player spawns.
 ]]
 
 local MailmanConfig = {}
-
--- Build StarterPlayer.StarterCharacter from this config. Set to false if you'd rather drop
--- your own hand-made "StarterCharacter" model into StarterPlayer.
-MailmanConfig.BuildStarterCharacter = true
-
--- R15 or R6. MUST match the rig your animations were made for, or they won't play.
-MailmanConfig.RigType = Enum.HumanoidRigType.R15
 
 -- Classic blocky body colours. Shirt/Pants textures below draw on top of these.
 MailmanConfig.BodyColors = {
@@ -23,16 +17,6 @@ MailmanConfig.BodyColors = {
 	Torso = Color3.fromRGB(13, 105, 172), -- Bright blue uniform
 	LeftLeg = Color3.fromRGB(0, 32, 96), -- Navy blue trousers
 	RightLeg = Color3.fromRGB(0, 32, 96),
-}
-
--- Body proportions (1 = classic). Keep BodyType/Proportion at 0 for the blocky 2019 shape.
-MailmanConfig.Scale = {
-	Height = 1,
-	Width = 1,
-	Depth = 1,
-	Head = 1,
-	BodyType = 0,
-	Proportion = 0,
 }
 
 -- Classic clothing. Upload assets/clothing/MailmanShirt.png & MailmanPants.png (or your own

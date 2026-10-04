@@ -49,7 +49,10 @@ def part_polys(p: PartInst, offset: CF = CF()):
     if p.transparency >= 1:
         return []
     sx, sy, sz = p.size
-    if p.shape == "Ball":
+    if getattr(p, "preview_head", False):
+        # Classic R6 head: a SpecialMesh "Head" (rounded, ~1.25 studs) on a 2x1x1 part.
+        local = [np.array([[v[1], v[0], v[2]] for v in poly]) for poly in _cylinder(1.25, 1.25)]
+    elif p.shape == "Ball":
         local = _sphere(min(p.size))
     elif p.shape == "Cylinder":
         local = _cylinder(sx, min(sy, sz))
@@ -101,44 +104,6 @@ def sheet(entries, path, cols=4, size=3.0):
     fig.tight_layout()
     fig.savefig(path, dpi=110)
     plt.close(fig)
-
-
-# ----------------------------------------------------------------- approximate R15 mailman
-
-SKIN = (245, 205, 48)
-SHIRT = (13, 105, 172)
-PANTS = (0, 32, 96)
-
-
-def _body_part(name, size, pos, color):
-    from rbx import part
-    p = part(name, size, pos, color=color)
-    return p
-
-
-def mailman_body():
-    """Blocky R15-ish body (feet at y=0) and the attachment frames accessories snap to."""
-    parts = [
-        _body_part("LeftLeg", (1, 2, 1), (-0.5, 1, 0), PANTS),
-        _body_part("RightLeg", (1, 2, 1), (0.5, 1, 0), PANTS),
-        _body_part("LowerTorso", (2, 0.4, 1), (0, 2.2, 0), PANTS),
-        _body_part("UpperTorso", (2, 1.6, 1), (0, 3.2, 0), SHIRT),
-        _body_part("LeftUpperArm", (1, 0.9, 1), (-1.5, 3.55, 0), SHIRT),
-        _body_part("RightUpperArm", (1, 0.9, 1), (1.5, 3.55, 0), SHIRT),
-        _body_part("LeftLowerArm", (1, 1.1, 1), (-1.5, 2.55, 0), SKIN),
-        _body_part("RightLowerArm", (1, 1.1, 1), (1.5, 2.55, 0), SKIN),
-        _body_part("Head", (1.2, 1.2, 1.2), (0, 4.6, 0), SKIN),
-        _body_part("ShoeL", (1.02, 0.3, 1.02), (-0.5, 0.15, 0), (27, 42, 53)),
-        _body_part("ShoeR", (1.02, 0.3, 1.02), (0.5, 0.15, 0), (27, 42, 53)),
-        _body_part("EyeL", (0.14, 0.24, 0.02), (-0.22, 4.7, -0.61), (17, 17, 17)),
-        _body_part("EyeR", (0.14, 0.24, 0.02), (0.22, 4.7, -0.61), (17, 17, 17)),
-        _body_part("Smile", (0.5, 0.06, 0.02), (0, 4.38, -0.61), (17, 17, 17)),
-    ]
-    attachments = {
-        "HatAttachment": CF((0, 5.2, 0)),
-        "BodyFrontAttachment": CF((0, 3.0, -0.5)),  # R15: UpperTorso centre + (0, -0.2, -0.5)
-    }
-    return parts, attachments
 
 
 def accessory_polys(acc, attachments):

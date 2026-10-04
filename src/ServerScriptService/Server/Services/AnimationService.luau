@@ -1,95 +1,57 @@
 --[[
 	AnimationService
-	Finds your animation folder (see Config/AnimationConfig) and plugs its animations into
-	each character's default "Animate" script. The folder is re-read on every spawn, so
-	updated animations apply on the next respawn without touching any code.
+	Plugs your animations (see Config/AnimationConfig) into each character's default "Animate"
+	script. The folder is re-read on every spawn, so updated animations apply on the next
+	respawn without touching any code.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local AnimationConfig = require(ReplicatedStorage:WaitForChild("Shared").Config.AnimationConfig)
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AnimationConfig = require(Shared.Config.AnimationConfig)
+local AnimationFinder = require(Shared.Util.AnimationFinder)
 
 local AnimationService = {}
 
-local warnedNoFolder = false
 local lastReport = ""
 
-local function lowerSet(list: { string }): { [string]: boolean }
-	local set = {}
-	for _, name in list do
-		set[string.lower(name)] = true
-	end
-	return set
-end
-
-function AnimationService.findFolder(): Instance?
-	local wanted = lowerSet(AnimationConfig.FolderNames)
-	for _, serviceName in AnimationConfig.SearchIn do
-		local ok, service = pcall(game.GetService, game, serviceName)
-		if ok and service then
-			for _, descendant in service:GetDescendants() do
-				if wanted[string.lower(descendant.Name)] and not descendant:IsA("Animation") then
-					return descendant
-				end
-			end
+local function report(message: string, isWarning: boolean?)
+	if message ~= lastReport then
+		lastReport = message
+		if isWarning then
+			warn(message)
+		elseif AnimationConfig.Verbose then
+			print(message)
 		end
 	end
-	return nil
 end
 
-local function findAnimation(folder: Instance, names: { string }): Animation?
-	local animations = {}
-	for _, descendant in folder:GetDescendants() do
-		if descendant:IsA("Animation") and descendant.AnimationId ~= "" then
-			animations[string.lower(descendant.Name)] = animations[string.lower(descendant.Name)] or descendant
-		end
-	end
-	for _, name in names do
-		local found = animations[string.lower(name)]
-		if found then
-			return found
-		end
-	end
-	return nil
-end
-
--- Returns { [slot] = animationId } for every slot found in your folder.
+-- Returns { [slot] = animationId } for every Animate slot found in your folder.
 function AnimationService.resolve(): { [string]: string }
 	local ids = {}
-	local folder = AnimationService.findFolder()
+	local folder = AnimationFinder.findFolder(AnimationConfig.SearchIn)
 	if not folder then
-		if not warnedNoFolder then
-			warnedNoFolder = true
-			warn("[AnimationService] No animation folder found (looked for "
-				.. table.concat(AnimationConfig.FolderNames, "/") .. "). Using Roblox default animations.")
-		end
+		report("[AnimationService] No animation folder found (looked for "
+			.. table.concat(AnimationConfig.FolderNames, "/") .. "). Using Roblox default animations.", true)
 		return ids
 	end
 
+	local index = AnimationFinder.index(folder)
 	for slot, names in AnimationConfig.Slots do
-		local animation = findAnimation(folder, names)
-		if animation then
-			ids[slot] = animation.AnimationId
-		end
+		ids[slot] = AnimationFinder.pick(index, names)
 	end
-	if AnimationConfig.UseRunForWalk and ids.run and not ids.walk then
+	if AnimationConfig.UseRunForWalk and ids.run then
 		ids.walk = ids.run
 	end
 
-	if AnimationConfig.Verbose then
-		local found, missing = {}, {}
-		for slot in AnimationConfig.Slots do
-			table.insert(ids[slot] and found or missing, slot)
-		end
-		table.sort(found)
-		table.sort(missing)
-		local report = `[AnimationService] Using {folder:GetFullName()} | found: {table.concat(found, ", ")}`
-			.. ` | default: {table.concat(missing, ", ")}`
-		if report ~= lastReport then
-			lastReport = report
-			print(report)
-		end
+	local found, missing = {}, {}
+	for slot in AnimationConfig.Slots do
+		table.insert(ids[slot] and found or missing, slot)
 	end
+	table.sort(found)
+	table.sort(missing)
+	report(`[AnimationService] Using {folder:GetFullName()} | found: {table.concat(found, ", ")}`
+		.. ` | default: {table.concat(missing, ", ")}`)
 	return ids
 end
 

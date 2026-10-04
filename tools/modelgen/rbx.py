@@ -109,6 +109,11 @@ class CF:
         return Rx @ Ry @ Rz
 
     @classmethod
+    def components(cls, x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22) -> "CF":
+        """Same argument order as Roblox's CFrame.new(x, y, z, R00, R01, ...)."""
+        return cls((x, y, z), [[r00, r01, r02], [r10, r11, r12], [r20, r21, r22]])
+
+    @classmethod
     def at(cls, pos, rot=(0, 0, 0)) -> "CF":
         return cls(pos, cls.angles(*rot))
 
@@ -225,6 +230,26 @@ def attachment(name, pos=(0, 0, 0), rot=(0, 0, 0)) -> Inst:
     a = Inst("Attachment", name)
     a.world_cf = CF.at(pos, rot)
     return a
+
+
+def motor6d(name, part0: PartInst, part1: PartInst, c0: CF, c1: CF) -> Inst:
+    return Inst("Motor6D", name, props={
+        "Part0": ("InstRef", part0),
+        "Part1": ("InstRef", part1),
+        "C0": ("CoordinateFrame", c0),
+        "C1": ("CoordinateFrame", c1),
+        "MaxVelocity": ("float", 0.1),
+    })
+
+
+def special_mesh(mesh_type: int, scale=(1, 1, 1), name="Mesh") -> Inst:
+    """mesh_type: Head=0, Torso=1, Wedge=2, Sphere=3, Cylinder=4, FileMesh=5, Brick=6."""
+    return Inst("SpecialMesh", name, props={"MeshType": ("token", mesh_type), "Scale": ("Vector3", scale)})
+
+
+def decal(name, texture: str, face: int = 5) -> Inst:
+    """face: Right=0, Top=1, Back=2, Left=3, Bottom=4, Front=5."""
+    return Inst("Decal", name, props={"Texture": ("Content", texture), "Face": ("token", face)})
 
 
 def model(name, children, primary: PartInst | None = None, attrs=None) -> Inst:
@@ -354,6 +379,10 @@ def _prop_xml(name, kind, value) -> str:
         return _cframe_xml(name, value)
     if kind == "Ref":
         return f'<Ref name="{name}">{value}</Ref>'
+    if kind == "InstRef":
+        return f'<Ref name="{name}">{value.ref}</Ref>'
+    if kind == "Content":
+        return f'<Content name="{name}"><url>{escape(value)}</url></Content>'
     if kind == "BinaryString":
         return f'<BinaryString name="{name}">{value}</BinaryString>'
     raise ValueError(kind)

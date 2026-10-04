@@ -3,16 +3,17 @@
 A retro (2019-style) Roblox game where you play a mailman delivering mail to houses.
 This repo is a [Rojo](https://rojo.space) project: it syncs straight into your place in Roblox Studio.
 
-**Step 1 (done): models + mailman StarterCharacter.** Next up: parkour and movement, then delivery, shop and UI.
+**Done so far:** models, the R6 mailman StarterCharacter, parkour movement (slide, air slide,
+double jump, ledge grab + climb, landing roll). Next up: delivery, shop and UI.
 
 ![Mailman outfits](docs/previews/MailmanOutfits.png)
 
 ## Getting it into Studio
 
-1. Install Rojo: the Studio plugin and the CLI (`rokit install` uses the versions pinned in `rokit.toml`).
-2. In this folder run `rojo serve`, then press **Connect** in the Rojo plugin in Studio.
-   Or build a place file with `rojo build -o MailmanDelivery.rbxl`.
-3. Press **Play**. You spawn as the mailman.
+1. In the repo folder run `rojo serve` (or `.\rojo.exe serve` if you downloaded rojo.exe into the folder).
+2. In Studio: **Plugins → Rojo → Connect**. Rojo needs the *Script Injection* permission
+   (Plugins → Manage Plugins → Rojo).
+3. After pulling updates (`git pull`), Rojo syncs them live. **Save/Publish the place** to keep them.
 
 Rojo only manages the folders listed below. Anything else in your place (your animation folder,
 your map, and so on) is left alone.
@@ -22,76 +23,111 @@ your map, and so on) is left alone.
 ```
 ReplicatedStorage
 ├── Shared
-│   ├── Config            <- tweak the game here
-│   │   ├── MailmanConfig     rig type, body colours, clothing, uniform, starting hat, respawn time
-│   │   ├── AnimationConfig   where your animation folder is + which names map to run/walk/idle...
-│   │   ├── HatConfig         every hat: price, rarity, boosts, upgrade levels/costs
-│   │   ├── MailConfig        mail types: payout, XP, bag space, spawn chance
-│   │   └── WeaponConfig      weapon stats (disabled for now)
-│   └── Util              AssetUtil, WeldUtil, AccessoryUtil helper modules
-└── Assets                <- all models (.rbxmx)
-    ├── Accessories       MailSatchel, NameBadge, MailmanTie
-    ├── Hats              11 hats (MailmanCap ... GoldenMailmanCap)
-    ├── Mail              Letter, MailBundle, Parcel, BigPackage
-    ├── Props             Mailbox, PostBox, MailSack
-    └── Weapons           NewspaperBat, ParcelLauncher (Tools)
+│   ├── Config                <- tweak the game here
+│   │   ├── GameConfig            Studio self-test on/off
+│   │   ├── MailmanConfig         body colours, clothing, uniform pieces, starting hat, respawn time
+│   │   ├── MovementConfig        walk/jump speed + every parkour move's tuning and keys
+│   │   ├── AnimationConfig       where your animation folder is + which names map to which move
+│   │   ├── HatConfig             every hat: price, rarity, boosts, upgrade levels/costs
+│   │   ├── MailConfig            mail types: payout, XP, bag space, spawn chance
+│   │   └── WeaponConfig          weapon stats (disabled for now)
+│   └── Util                  AssetUtil, WeldUtil, AccessoryUtil, AnimationFinder
+└── Assets                    <- all models (.rbxmx)
+    ├── Accessories           MailSatchel, NameBadge, MailmanTie
+    ├── Hats                  11 hats (MailmanCap ... GoldenMailmanCap)
+    ├── Mail                  Letter, MailBundle, Parcel, BigPackage
+    ├── Props                 Mailbox, PostBox, MailSack
+    └── Weapons               NewspaperBat, ParcelLauncher (Tools)
 ServerScriptService
 └── Server
-    ├── Main              boots the services below in order
+    ├── Main                  boots the services below in order
     └── Services
-        ├── AssetPrepService   welds hats/uniform/weapons at startup, warns about config/model mismatches
-        ├── AnimationService   puts your animations into every character
-        ├── HatService         equipped hat + boosts (player attributes)
-        └── CharacterService   builds the mailman StarterCharacter, spawns/respawns players
+        ├── AssetPrepService      welds hats/uniform/weapons at startup, warns about config/model mismatches
+        ├── AnimationService      puts your run/idle/jump/... animations into every character
+        ├── HatService            equipped hat + boosts (player attributes)
+        ├── CharacterService      sets up the mailman, spawns/respawns players, puts on the uniform
+        └── SelfTestService       Studio-only PASS/FAIL checks after every spawn
+StarterPlayer
+├── StarterCharacter          the R6 mailman (visible/editable in Studio)
+└── StarterPlayerScripts
+    └── Client
+        ├── Main              starts client systems
+        └── Movement          MovementController, Mover, AnimPlayer, Abilities/ (one file per move)
 ```
 
 Source: `src/` mirrors the tree above. Mapping: `default.project.json`.
 
-## The mailman (StarterCharacter)
+## The mailman (R6)
 
-At server start `CharacterService` builds `StarterPlayer.StarterCharacter`. It's a classic blocky
-R15 body (yellow skin, blue shirt, navy trousers) wearing the satchel, badge, tie and the
-**Mailman Cap**. Change any of this in `MailmanConfig`.
+`StarterPlayer.StarterCharacter` is a standard R6 rig: the same part names, joints and
+attachments as Roblox's default R6 character, so R6 animations and accessories work on it.
+At server start its colours and clothing are set from `MailmanConfig`. Every time a player
+spawns, the uniform (satchel, badge, tie) and their equipped hat are put on with
+`Humanoid:AddAccessory`.
 
 - **Shirt/Pants textures:** `assets/clothing/MailmanShirt.png` and `MailmanPants.png` are standard
-  585×559 templates (pockets, buttons, envelope logo, shoulder patches, belt, stripes, shoes).
-  Upload them in Studio (Asset Manager → Bulk Import), copy each **image** id, and paste them into
-  `MailmanConfig.Clothing` as `"rbxassetid://<id>"`.
-- **Using your own hand-made StarterCharacter:** set `MailmanConfig.BuildStarterCharacter = false`
-  and put your model in StarterPlayer.
+  585×559 templates. Upload them in Studio (Asset Manager → Bulk Import), copy each **image** id, and
+  paste them into `MailmanConfig.Clothing` as `"rbxassetid://<id>"`.
+
+## Movement (parkour)
+
+| Move | PC | Gamepad | Mobile |
+|---|---|---|---|
+| Slide (on the ground, while moving) | Ctrl or C | B | Slide button |
+| Air slide / dive (in the air; landing during it turns into a slide) | Ctrl or C | B | Slide button |
+| Double jump | Space in the air | A | Jump |
+| Ledge grab | jump at a wall while holding toward it | | |
+| Climb up / let go (while hanging) | Space / Ctrl or C (or walk away from the wall) | A / B | Jump / Slide |
+| Landing roll | automatic when landing from 14+ studs | | |
+
+Speeds, durations, reach, keys and on/off switches for every move are in `MovementConfig`.
+Hat boosts apply: `HatBoost_Speed` scales WalkSpeed, `HatBoost_Jump` scales JumpPower and the
+double jump. Each move is its own file in `Client/Movement/Abilities`, so moves can be added or
+removed without touching the others.
 
 ## Animations (your folder)
 
-`AnimationService` finds your animation folder automatically. It looks for a folder named
-`Animations`, `Anims` or `Animation` in ReplicatedStorage, then ServerStorage, StarterPlayer and
-Workspace. It then matches Animation objects by name (case-insensitive, subfolders are fine):
+Keep your animation folder in **ReplicatedStorage**, named `Animations` or `Anims`. The movement
+animations are played by the client, which can't see ServerStorage. Animations must be **R6** and owned
+by you or the group that owns the game. Animation objects are matched by name (case-insensitive,
+subfolders are fine):
 
-| Slot | Names it looks for |
+| Used for | Names it looks for |
 |---|---|
-| run | Run, Running, RunAnim, RunAnimation, Sprint |
-| walk | Walk, Walking, WalkAnim (if missing, the **run** animation is used, so the mailman always runs) |
+| running (also used for walking, see `UseRunForWalk`) | Run, Running, RunAnim, Sprint |
 | idle / jump / fall / climb / swim / sit | Idle, Jump, Fall, Climb, Swim, Sit (+ "…Anim" variants) |
+| **Slide** | Slide, SlideAnim, Sliding |
+| **AirSlide** (falls back to Slide) | AirSlide, Dive, DiveAnim |
+| **DoubleJump** | DoubleJump, AirJump, Flip |
+| **LedgeHang** | LedgeHang, Hang, LedgeGrab, LedgeIdle |
+| **ClimbUp** | ClimbUp, LedgeClimb, Mantle |
+| **Roll** | Roll, LandingRoll, RollAnim |
 
-When you update animations, replace the Animation objects (or their AnimationId) in your folder and
-keep the names. They apply on the next spawn, with no code changes. The Output window prints which
-slots were found. Two things to check:
+The movement animations are **placeholders** until you add them. The moves already work; they
+just don't animate yet. You can also paste ids straight into `AnimationConfig.MoveIds` instead of
+using the folder. Updated animations apply on the next spawn, with no code changes.
 
-- **Rig type must match.** `MailmanConfig.RigType` defaults to **R15**. If your animations are R6, set it to R6.
-- Animations must be owned by you or the group that owns the game.
+## Testing in Studio
+
+Press Play and open **View → Output**. With `GameConfig.SelfTestInStudio` on (the default), you get:
+
+- `[SelfTest] PASS/FAIL ...` lines, 3 seconds after each spawn. They cover the R6 rig, joints, body
+  colours, the Animate script, each uniform piece and the hat (welded to the body and at the right
+  spot), and whether your Run animation was found.
+- `[Movement] Ready ...` with your speeds and which move animations were found vs still placeholders.
+- `[AnimationService] Using ... | found: ... | default: ...`, showing which character animations came from your folder.
+
+If something looks wrong, send a screenshot of these lines.
 
 ## Hats & boosts
 
 `HatConfig` holds all 11 hats, from Starter up to Mythic. Each hat has a price, base boosts
 (`Speed`, `Jump`, `Cash`, `XP`) and 5 upgrade levels (each level adds 25% of the base boost).
 Upgrade cost grows ×1.6 per level. `HatService` writes the final numbers to player attributes
-(`EquippedHat`, `EquippedHatLevel`, `HatBoost_Speed`, `HatBoost_Cash`, …) so movement, delivery
-and UI scripts can read them.
+(`EquippedHat`, `EquippedHatLevel`, `HatBoost_Speed`, `HatBoost_Cash`, …).
 
 **Try hats now:** in Play mode switch to the Server view, select your Player, and change the
-`EquippedHat` attribute (e.g. `TopHat`). The hat swaps instantly.
-
-**Add a hat:** drop an Accessory (Handle with a `HatAttachment`) into `Assets/Hats`, then add an
-entry with the same name in `HatConfig.Hats`.
+`EquippedHat` attribute (e.g. `TopHat`).
 
 | Hat | Rarity | Price | Boosts |
 |---|---|---|---|
@@ -122,16 +158,16 @@ entry with the same name in `HatConfig.Hats`.
 - **PostBox:** the blue pickup box at the depot (`IsPickup = true`). **MailSack** is a decoration.
 - **Mail** models have a `Handle` PrimaryPart and a `MailType` attribute, ready to become carryable.
 - **Weapons:** `NewspaperBat` ("The Daily Whack", has a `Hitbox` part) and `ParcelLauncher`
-  (has a `Muzzle` attachment). They're Tools with the grip set up. Combat comes later.
+  (has a `Muzzle` attachment). Combat comes later.
 
 ## Editing models
 
-All parts in the `.rbxmx` files are anchored and unwelded. `AssetPrepService` welds them at
+All parts in the `.rbxmx` asset files are anchored and unwelded. `AssetPrepService` welds them at
 runtime, so you can move or add parts freely.
 
 - **In Studio:** edit the model, then right-click → *Save to File…* over the matching
-  `.rbxmx` in `src/ReplicatedStorage/Assets/...` (Rojo then keeps it in sync).
-- **From code:** every model is generated by `tools/modelgen` (Python). Edit
-  `tools/modelgen/models/*.py` and run `python3 tools/modelgen/build.py`. That rewrites the
-  `.rbxmx` files, the clothing PNGs and the preview images in `docs/previews`.
-  Running it overwrites edits made in Studio, so use one workflow per model.
+  `.rbxmx` in `src/...` (Rojo then keeps it in sync).
+- **From code:** every model, including the StarterCharacter, is generated by `tools/modelgen`
+  (Python). Edit `tools/modelgen/models/*.py` and run `python3 tools/modelgen/build.py`. That
+  rewrites the `.rbxmx` files, the clothing PNGs and the previews in `docs/previews`. Running it
+  overwrites edits made in Studio, so use one workflow per model.

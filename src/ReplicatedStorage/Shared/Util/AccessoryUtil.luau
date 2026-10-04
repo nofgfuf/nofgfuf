@@ -1,7 +1,8 @@
 --[[
 	AccessoryUtil
-	Puts Accessories on characters (works on models that aren't in Workspace yet, e.g. the
-	StarterCharacter template) and swaps them by "Slot" attribute ("Hat", "Uniform", ...).
+	Puts Accessories on characters and swaps them by "Slot" attribute ("Hat", "Uniform", ...).
+	Characters in Workspace use Roblox's own Humanoid:AddAccessory. Models outside Workspace
+	(e.g. previews) get the same weld built by hand.
 ]]
 
 local AccessoryUtil = {}
@@ -19,26 +20,13 @@ local function findCharacterAttachment(character: Model, name: string): Attachme
 	return nil
 end
 
--- Attaches `accessory` to `character` using matching attachment names (like Humanoid:AddAccessory).
-function AccessoryUtil.attach(character: Model, accessory: Accessory): boolean
-	local handle = accessory:FindFirstChild("Handle")
-	if not (handle and handle:IsA("BasePart")) then
-		warn(`[AccessoryUtil] {accessory.Name} has no Handle part`)
-		return false
-	end
-
+local function weldByHand(character: Model, accessory: Accessory, handle: BasePart): boolean
 	local handleAttachment = handle:FindFirstChildWhichIsA("Attachment")
 	local target = handleAttachment and findCharacterAttachment(character, handleAttachment.Name)
 	if not (handleAttachment and target) then
 		warn(`[AccessoryUtil] No matching attachment on {character.Name} for {accessory.Name}`)
 		return false
 	end
-
-	local old = handle:FindFirstChild("AccessoryWeld")
-	if old then
-		old:Destroy()
-	end
-
 	accessory.Parent = character
 	local weld = Instance.new("Weld")
 	weld.Name = "AccessoryWeld"
@@ -48,6 +36,21 @@ function AccessoryUtil.attach(character: Model, accessory: Accessory): boolean
 	weld.C1 = target.CFrame
 	weld.Parent = handle
 	return true
+end
+
+-- Attaches `accessory` to `character` using matching attachment names.
+function AccessoryUtil.attach(character: Model, accessory: Accessory): boolean
+	local handle = accessory:FindFirstChild("Handle")
+	if not (handle and handle:IsA("BasePart")) then
+		warn(`[AccessoryUtil] {accessory.Name} has no Handle part`)
+		return false
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid and character:IsDescendantOf(workspace) then
+		humanoid:AddAccessory(accessory)
+		return accessory.Parent == character
+	end
+	return weldByHand(character, accessory, handle)
 end
 
 function AccessoryUtil.getBySlot(character: Model, slot: string): { Accessory }
